@@ -1,0 +1,13 @@
+#QMAKE=~/bin/qt-5.12.4/bin/qmake
+QMAKE=qmake
+${QMAKE} -project "QT += widgets" "QT += printsupport" "CONFIG += debug"
+# "QMAKE_CXXFLAGS_DEBUG += -pg" "QMAKE_LFLAGS_DEBUG += -pg"
+${QMAKE}
+make
+
+if [ $? -eq 0 ]; then
+    CMD='./'
+    CMD+=`basename $PWD`
+    echo ${CMD}
+    ${CMD}
+fi
