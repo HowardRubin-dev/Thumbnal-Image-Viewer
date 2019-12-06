@@ -1,0 +1,32 @@
+
+Building Thumbnal-Image-Viewer
+Requires Qt
+The include 'build' shell script should run successfully
+
+Running
+Running from the GUI may fail silently. If so, run from the command line which will report that
+libQt5PrintSupport.so.5 is missing.  Synaptic should install this by installing libQt5PrintSupport
+
+Printing by default uses RGB which oversaturates some colors especially skin tones
+You can overcome this by switching to CMYK by editing your printer's /etc/cups/ppd/<printer name>.ppd as instructed here:
+https://namakutux.blogspot.com/2012/03/how-to-print-with-cmyk-color-profile-in.html
+OR
+https://web.archive.org/web/20180519210213/http://namakutux.blogspot.com/2012/03/how-to-print-with-cmyk-color-profile-in.html
+Then CMYK should be available in Printer Properties > Printer Options > Color Model
+
+Summary of https://namakutux.blogspot.com/2012/03/how-to-print-with-cmyk-color-profile-in.html
+Add these lines to /etc/cups/ppd/<printer name>.ppd
+
+*ColorKeyWords: "ColorModel"
+*OpenUI *ColorModel/Color Model: PickOne
+*OPOptionHints ColorModel: "radiobuttons"
+*OrderDependency: 10 AnySetup *ColorModel
+*DefaultColorModel: RGB
+*StpDefaultColorModel: RGB
+*ColorModel Gray/Grayscale: "<>setpagedevice"
+*ColorModel Black/Inverted Grayscale: "<>setpagedevice"
+*ColorModel RGB/RGB Color: "<>setpagedevice"
+*ColorModel CMY/CMY Color: "<>setpagedevice"
+*ColorModel CMYK/CMYK: "<>setpagedevice"
+*ColorModel KCMY/KCMY: "<>setpagedevice"
+*CloseUI: *ColorModel

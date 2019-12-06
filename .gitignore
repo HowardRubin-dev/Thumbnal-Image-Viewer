@@ -1,0 +1,10 @@
+moc_*
+*.o
+.*
+Makefile
+tiv
+tiv.pro
+Thumbnal-Image-Viewer
+Thumbnal-Image-Viewer.pro
+*~
+*.out
