@@ -32,6 +32,10 @@ private slots:
   void deleteCatalogFiles();
   void slideshowCatalog();
 
+  void activatePreviousWindow();
+  void activatePreviousCatalog();
+  void activateNextCatalog();
+
   void slotslideshowkeyPress(void* slideshowId, SlideshowView::SlideshowAction result);
   void slotListViewCurrentChanged(const std::string& catalogFilename, const std::string& filename);
 

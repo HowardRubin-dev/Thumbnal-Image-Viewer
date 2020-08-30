@@ -39,6 +39,10 @@ MainWindow::MainWindow() {
   mdiArea = new QMdiArea;
   setCentralWidget(mdiArea);
 
+  //QMdiArea::WindowOrder order = mdiArea->activationOrder();
+  //printf("WindowOrder = %d\n", order);
+  //mdiArea->setActivationOrder
+
   struct menuItem fileMenuItems[] = {
     { tr("&Open Image..."),   this, SLOT(openImage()),          QKeySequence::Open, ALWAYS },
     { tr("&Print Image..."),  this, SLOT(printImage()),         QKeySequence(tr("CTRL+p")), IMAGE|SLIDESHOW, },
@@ -46,27 +50,18 @@ MainWindow::MainWindow() {
     { tr("&Delete Files..."), this, SLOT(deleteCatalogFiles()), QKeySequence(tr("SHIFT+DELETE")), CATALOG },
     { tr("Close Program"),    this, SLOT(close()),              QKeySequence(tr("ALT+F4")), ALWAYS },
   };
-#if 1
   populateMenu(tr("&File"), fileMenuItems);
-#else
-  QMenu* filemenu = populateMenu(tr("&File"), fileMenuItems);
-  QMenu* recent = filemenu->addMenu("&Recent Items");
-  for (int i=0; i<2; ++i) {
-    char buffer[100];
-    sprintf(buffer, "Item %03d", i);
-    QAction* action = new QAction(buffer);
-    recent->addAction(action);
-  }
-#endif
 
   struct menuItem viewMenuItems[] = {
     { tr("Next Window"),       mdiArea, SLOT(activateNextSubWindow()),
       QList<QKeySequence> { QKeySequence::NextChild,
 			    QKeySequence(Qt::CTRL+Qt::Key_F6) }, ANY2ORMORE },
-
-    { tr("Previous Window"),   mdiArea, SLOT(activatePreviousSubWindow()),
-      QList<QKeySequence> { QKeySequence::PreviousChild,
+    { tr("Previous Window"),   this, SLOT(activatePreviousWindow()),
+      QList<QKeySequence> { //QKeySequence::PreviousChild, // Doesn't work
+			    QKeySequence(Qt::CTRL+Qt::SHIFT+Qt::Key_Tab),
 			    QKeySequence(Qt::CTRL+Qt::SHIFT+Qt::Key_F6) }, ANY2ORMORE },
+    { tr("Next Catalog"),        this, SLOT(activateNextCatalog()),     QKeySequence(tr("CTRL+c")), IMAGE|CATALOG },
+    { tr("Previous Catalog"),    this, SLOT(activatePreviousCatalog()), QKeySequence(tr("CTRL+SHIFT+c")), IMAGE|CATALOG },
 
     { tr("Ma&ximize"),           this, SLOT(maximize()),          QKeySequence(tr("x")), ANY },
     { tr("Normal Si&ze"),        this, SLOT(normalSize()),        QKeySequence(tr("z")), ANY },
@@ -130,6 +125,8 @@ void MainWindow::slotsubWindowActivated(QMdiSubWindow* subWindow) {
       visible = slideshow != nullptr; break;
     case IMAGE | SLIDESHOW:
       visible = image || slideshow; break;
+    case IMAGE | CATALOG:
+      visible = image || list; break;
     case ANY:
       visible = image || list || slideshow; break;
     default:
@@ -255,6 +252,74 @@ void MainWindow::togglefullscreen() {
     showNormal(); // Show main window normal size
   else 
     showFullScreen(); // Show main window full screen
+}
+
+// QMdiArea::activatePreviousSubWindow() doesn't work as advertised
+// See bug report https://bugreports.qt.io/browse/QTBUG-22526
+void MainWindow::activatePreviousWindow() {
+  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
+  QMdiSubWindow* activeSubWin;
+  QList<QMdiSubWindow*>::const_iterator it;
+
+  if (!subwindows.empty()
+      && (activeSubWin = mdiArea->activeSubWindow()) != nullptr
+      && (it = std::find(subwindows.cbegin(), subwindows.cend(), activeSubWin)) != subwindows.cend()) {
+
+    if (it == subwindows.cbegin())
+	it = subwindows.cend();
+      mdiArea->setActiveSubWindow(*--it);
+  }
+}
+
+void MainWindow::activateNextCatalog() {
+  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
+  QMdiSubWindow* activeSubWin;
+  QList<QMdiSubWindow*>::const_iterator itActive, it;
+  ListView* list;
+
+  if (!subwindows.empty()
+      && (activeSubWin = mdiArea->activeSubWindow()) != nullptr
+      && (itActive = std::find(subwindows.cbegin(), subwindows.cend(), activeSubWin)) != subwindows.cend()) {
+
+    for (it=itActive; ++it!=subwindows.cend(); ) {
+      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
+	mdiArea->setActiveSubWindow(*it);
+	return;
+      }
+    }
+    for (it=subwindows.cbegin(); it!=itActive; ++it) {
+      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
+	mdiArea->setActiveSubWindow(*it);
+	return;
+      }
+    }
+  }
+}
+void MainWindow::activatePreviousCatalog() {
+  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
+  QMdiSubWindow* activeSubWin;
+  QList<QMdiSubWindow*>::const_iterator itActive, it;
+  ListView* list;
+
+  if (!subwindows.empty()
+      && (activeSubWin = mdiArea->activeSubWindow()) != nullptr
+      && (itActive = std::find(subwindows.cbegin(), subwindows.cend(), activeSubWin)) != subwindows.cend()) {
+
+    for (it=itActive; it!=subwindows.cbegin(); ) {
+      --it;
+      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
+	mdiArea->setActiveSubWindow(*it);
+	return;
+      }
+    }
+    for (it=subwindows.cend(); it!=itActive; ) {
+      --it;
+      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
+	mdiArea->setActiveSubWindow(*it);
+	return;
+      }
+    }
+  }
 }
 
 void MainWindow::openCatalog() {
