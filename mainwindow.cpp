@@ -260,65 +260,54 @@ void MainWindow::activatePreviousWindow() {
   const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
   QMdiSubWindow* activeSubWin;
   QList<QMdiSubWindow*>::const_iterator it;
+  const auto cbegin = subwindows.cbegin(),
+             cend   = subwindows.cend();
 
-  if (!subwindows.empty()
+  if (!subwindows.empty() // Sanity checks
       && (activeSubWin = mdiArea->activeSubWindow()) != nullptr
-      && (it = std::find(subwindows.cbegin(), subwindows.cend(), activeSubWin)) != subwindows.cend()) {
+      && (it = std::find(cbegin, cend, activeSubWin)) != cend) {
 
-    if (it == subwindows.cbegin())
-	it = subwindows.cend();
-      mdiArea->setActiveSubWindow(*--it);
+    if (it == cbegin) // Active window is first
+      it = cend; // So wrap around to end before decrementing iterator
+    mdiArea->setActiveSubWindow(*--it);
   }
 }
 
+static bool isCatalog(const QMdiSubWindow* it) {
+  return dynamic_cast<ListView*>(it->widget()) != nullptr;
+}
 void MainWindow::activateNextCatalog() {
   const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
   QMdiSubWindow* activeSubWin;
-  QList<QMdiSubWindow*>::const_iterator itActive, it;
-  ListView* list;
+  QList<QMdiSubWindow*>::const_iterator itActive, itCatalog;
+  const auto cbegin = subwindows.cbegin(),
+             cend   = subwindows.cend();
 
-  if (!subwindows.empty()
+  if (!subwindows.empty() // Sanity checks
       && (activeSubWin = mdiArea->activeSubWindow()) != nullptr
-      && (itActive = std::find(subwindows.cbegin(), subwindows.cend(), activeSubWin)) != subwindows.cend()) {
+      && (itActive = std::find(cbegin, cend, activeSubWin)) != cend) {
 
-    for (it=itActive; ++it!=subwindows.cend(); ) {
-      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
-	mdiArea->setActiveSubWindow(*it);
-	return;
-      }
-    }
-    for (it=subwindows.cbegin(); it!=itActive; ++it) {
-      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
-	mdiArea->setActiveSubWindow(*it);
-	return;
-      }
-    }
+    if ((itCatalog = std::find_if(itActive+1, cend, isCatalog)) != cend)
+      mdiArea->setActiveSubWindow(*itCatalog); // First catalog after active window
+    else if ((itCatalog = std::find_if(cbegin, itActive, isCatalog)) != cend)
+      mdiArea->setActiveSubWindow(*itCatalog); // First catalog before active window
   }
 }
 void MainWindow::activatePreviousCatalog() {
   const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
   QMdiSubWindow* activeSubWin;
-  QList<QMdiSubWindow*>::const_iterator itActive, it;
-  ListView* list;
+  QList<QMdiSubWindow*>::const_reverse_iterator itActive, itCatalog;
+  const auto crbegin = subwindows.crbegin(),
+             crend   = subwindows.crend();
 
-  if (!subwindows.empty()
+  if (!subwindows.empty() // Sanity checks
       && (activeSubWin = mdiArea->activeSubWindow()) != nullptr
-      && (itActive = std::find(subwindows.cbegin(), subwindows.cend(), activeSubWin)) != subwindows.cend()) {
+      && (itActive = std::find(crbegin, crend, activeSubWin)) != crend) {
 
-    for (it=itActive; it!=subwindows.cbegin(); ) {
-      --it;
-      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
-	mdiArea->setActiveSubWindow(*it);
-	return;
-      }
-    }
-    for (it=subwindows.cend(); it!=itActive; ) {
-      --it;
-      if ((list = dynamic_cast<ListView*>((*it)->widget())) != nullptr) {
-	mdiArea->setActiveSubWindow(*it);
-	return;
-      }
-    }
+    if ((itCatalog = std::find_if(itActive+1, crend, isCatalog)) != crend)
+      mdiArea->setActiveSubWindow(*itCatalog); // Last catalog before active window
+    else if ((itCatalog = std::find_if(crbegin, itActive, isCatalog)) != crend)
+      mdiArea->setActiveSubWindow(*itCatalog); // Last catalog after active window
   }
 }
 
