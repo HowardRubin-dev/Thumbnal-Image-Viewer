@@ -1,6 +1,7 @@
 #include "catalog.h"
 #include "catalogitem.h"
 #include "listview.h"
+#include "sortdialog.h"
 #include "trashfiles.h"
 #include "utility.h"
 #include <QDirIterator>
@@ -132,11 +133,57 @@ Catalog* Catalog::open() {
   return catItemModel;
 }
 
+// Return lambda function to use for sorting CatalogItem s depending on sort dialog choices
+std::function<bool (const CatalogItem* lhs, const CatalogItem* rhs)>
+Catalog::sortFunction(const std::string& sortBy, bool ascending) {
+  if (sortBy.compare("Path") == 0 && ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ImagePath().compare(rhs->ImagePath()) < 0; };
+  }
+  if (sortBy.compare("Path") == 0 && !ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ImagePath().compare(rhs->ImagePath()) > 0; };
+  }
+  if (sortBy.compare("Date") == 0 && ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ModTime() < rhs->ModTime(); };
+  }
+  if (sortBy.compare("Date") == 0 && !ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ModTime() > rhs->ModTime(); };
+  }
+  if (sortBy.compare("Size") == 0 && ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ImageSize() < rhs->ImageSize(); };
+  }
+  if (sortBy.compare("Size") == 0 && !ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ImageSize() > rhs->ImageSize(); };
+  }
+  if (sortBy.compare("Name") == 0 && ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ImageBasename().compare(rhs->ImageBasename()) < 0; };
+  }
+  if (sortBy.compare("Name") == 0 && !ascending) {
+    return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+      return lhs->ImageBasename().compare(rhs->ImageBasename()) > 0; };
+  }
+
+  // Else sort by Date descending. Should never happen
+  return [](const CatalogItem* lhs, const CatalogItem* rhs) -> bool {
+    return lhs->ModTime() > rhs->ModTime(); };
+}
+
 // Another way to sort: https://doc.qt.io/qt-5/qsortfilterproxymodel.html
 std::vector<QModelIndex> Catalog::sort(const std::vector<QModelIndex>& oldSelections) {
   std::vector<QModelIndex> rv; // New selections
   const int nRows = rowCount();
   if (nRows < 2) return rv; // Nothing to sort
+
+  SortDialog sortDlg;
+  if (sortDlg.exec() != QDialog::Accepted)
+    return rv; // User changed mind
+
   std::vector<CatalogItem*> vItems;
 
   QStandardItem* standarditem;
@@ -160,10 +207,10 @@ std::vector<QModelIndex> Catalog::sort(const std::vector<QModelIndex>& oldSelect
     }
   }
 
-  std::sort(vItems.begin(), vItems.end(), [](const CatalogItem* lhs,
-					     const CatalogItem* rhs) -> bool {
-	      return lhs->ModTime() > rhs->ModTime();
-	    } );
+
+  std::sort(vItems.begin(), vItems.end(), sortFunction(sortDlg.sortField(), sortDlg.isAscending()));
+
+
   for (int n; (n=rowCount())>0; takeRow(n-1)) // Clear catalog without deleting catalogitems
     ;
 

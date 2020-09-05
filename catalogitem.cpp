@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sys/stat.h>
 #include "catalogitem.h"
+#include "utility.h"
 
 CatalogItem::CatalogItem(const char* path) : sImagePath(path) {
 }
@@ -98,4 +99,8 @@ void CatalogItem::WriteToCatalog(std::ofstream& ofsCatalogFile) const {
 
   ofsCatalogFile.write(iconBytes.constData(), iconBytes.size()); // 128x128 image data
   ofsCatalogFile << std::endl;
+}
+
+const std::string CatalogItem::ImageBasename() const {
+  return TivUtility::Basename(sImagePath);
 }

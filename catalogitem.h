@@ -14,9 +14,10 @@ class CatalogItem : public QStandardItem {
   bool Changed() const;
 
   time_t ModTime() const { return imageModTime; }
-  //off_t ImageSize() const { return imageSizeOriginal; };
+  off_t ImageSize() const { return imageSizeOriginal; };
 
   const std::string& ImagePath() const { return sImagePath; }
+  const std::string ImageBasename() const;
 
   bool bCurrent, bSelected; // To preserve selections after sort
 

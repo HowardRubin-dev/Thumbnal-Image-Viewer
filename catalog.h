@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QStandardItemModel>
+class CatalogItem;
 class ListView;
 class MainWindow;
 
@@ -43,6 +44,10 @@ class Catalog : public QStandardItemModel {
 
   void WriteHeader(std::ofstream& ofsCatalogFile) const;
   void WriteNewCatalogFile() const; // Write new catalog file
+
+  static std::function<bool (const CatalogItem* lhs, const CatalogItem* rhs)>
+    sortFunction(const std::string& how, bool ascending);
+
   const std::string m_foldername;
   const std::string m_catalogFileName;
   ListView* m_listview = nullptr;

@@ -1,4 +1,5 @@
 #include <QListView>
+#include <QTime>
 #include "SlideshowView.h"
 //#include <QAbstractItemView>
 class QModelIndex;
@@ -40,4 +41,6 @@ class ListView : public QListView {
   void OpenCurrentImage();
   MainWindow* const m_mainwin;
   Catalog* const m_catalog;
+
+  QTime mostRecentSortTime;
 };

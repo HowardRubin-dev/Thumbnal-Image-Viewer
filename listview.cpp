@@ -8,7 +8,9 @@
 #include <QListView>
 #include <QMessageBox>
 
-ListView::ListView(MainWindow* mainwin, Catalog* cat) : QListView(), m_mainwin(mainwin), m_catalog(cat) {
+ListView::ListView(MainWindow* mainwin, Catalog* cat)
+  : QListView(), m_mainwin(mainwin), m_catalog(cat),
+    mostRecentSortTime(QTime::currentTime().addSecs(-10)) {
   setViewMode(QListView::IconMode);
   setSelectionMode(QAbstractItemView::ExtendedSelection);
   setModel(cat);
@@ -112,7 +114,9 @@ void ListView::keyReleaseEvent(QKeyEvent* e) {
   switch (e->key()) {
   case Qt::Key_Return:
   case Qt::Key_Enter:
-    OpenCurrentImage();
+    // May have closed the sort dialog with the enter key so don't open an image in that case
+    if (QTime::currentTime().addMSecs(-200) > mostRecentSortTime)
+      OpenCurrentImage();
     break;
   case Qt::Key_Home:
     if (e->modifiers() == Qt::ControlModifier) {
@@ -137,7 +141,9 @@ void ListView::keyReleaseEvent(QKeyEvent* e) {
   QListView::keyReleaseEvent(e);
 }
 void ListView::mouseDoubleClickEvent(QMouseEvent* e) {
-  OpenCurrentImage();
+  // May have closed the sort dialog with double click so don't open an image in that case
+  if (QTime::currentTime().addMSecs(-500) > mostRecentSortTime)
+    OpenCurrentImage();
   QListView::mouseDoubleClickEvent(e);
 }
 
@@ -153,6 +159,7 @@ void ListView::updateCatalog() {
   }
 }
 
+// Include new filename in main window title in MainWindow::slotListViewCurrentChanged()
 void ListView::currentChanged(const QModelIndex &current, const QModelIndex &previous) {
   if (m_catalog)
     emit signalCurrentChanged(m_catalog->CatalogFileName(), filename(current.row()));
@@ -175,6 +182,7 @@ void ListView::sortCatalog() {
 	model->select(*it, QItemSelectionModel::Select);
       }
     }
+    mostRecentSortTime = QTime::currentTime();
   }
 }
 
