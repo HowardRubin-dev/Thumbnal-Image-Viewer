@@ -4,6 +4,7 @@
 #include "ImageView.h"
 #include "listview.h"
 #include "utility.h"
+#include "settings.h"
 #include "SlideshowView.h"
 #include "menuitem.h"
 
@@ -13,6 +14,8 @@
 #include <QMdiSubWindow>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QApplication>
+#include <QClipboard>
 
 template<int N>
 QMenu* MainWindow::populateMenu(const QString& menuName, struct menuItem (&items)[N]) {
@@ -36,6 +39,7 @@ QMenu* MainWindow::populateMenu(const QString& menuName, struct menuItem (&items
 
 MainWindow::MainWindow() {
   setGeometry(0,0,1500,1200);
+  showMaximized();
   mdiArea = new QMdiArea;
   setCentralWidget(mdiArea);
 
@@ -48,20 +52,25 @@ MainWindow::MainWindow() {
     { tr("&Print Image..."),  this, SLOT(printImage()),         QKeySequence(tr("CTRL+p")), IMAGE|SLIDESHOW, },
     { tr("&Trash file(s)"),   this, SLOT(trashFiles()),         QKeySequence(tr("DELETE")), ANY },
     { tr("&Delete Files..."), this, SLOT(deleteCatalogFiles()), QKeySequence(tr("SHIFT+DELETE")), CATALOG },
+    { tr("&Copy Image Path /"), this, SLOT(copyImagePathSlash()), QKeySequence(tr("ALT+/")), ANY },
+    { tr("&Copy Image Path \\"), this, SLOT(copyImagePathBackslash()), QKeySequence(tr("ALT+\\")), ANY },
     { tr("Close Program"),    this, SLOT(close()),              QKeySequence(tr("ALT+F4")), ALWAYS },
   };
   populateMenu(tr("&File"), fileMenuItems);
 
   struct menuItem viewMenuItems[] = {
-    { tr("Next Window"),       mdiArea, SLOT(activateNextSubWindow()),
+    { //tr("Next Window"),       mdiArea, SLOT(activateNextSubWindow()),
+      tr("Next Window"),         this, SLOT(activateNextWindow()),
       QList<QKeySequence> { QKeySequence::NextChild,
 			    QKeySequence(Qt::CTRL+Qt::Key_F6) }, ANY2ORMORE },
+
     { tr("Previous Window"),   this, SLOT(activatePreviousWindow()),
       QList<QKeySequence> { //QKeySequence::PreviousChild, // Doesn't work
 			    QKeySequence(Qt::CTRL+Qt::SHIFT+Qt::Key_Tab),
 			    QKeySequence(Qt::CTRL+Qt::SHIFT+Qt::Key_F6) }, ANY2ORMORE },
-    { tr("Next Catalog"),        this, SLOT(activateNextCatalog()),     QKeySequence(tr("CTRL+c")), IMAGE|CATALOG },
-    { tr("Previous Catalog"),    this, SLOT(activatePreviousCatalog()), QKeySequence(tr("CTRL+SHIFT+c")), IMAGE|CATALOG },
+
+    { tr("Next Catalog"),        this, SLOT(activateNextCatalog()),     QKeySequence(tr("c")), IMAGE|CATALOG },
+    { tr("Previous Catalog"),    this, SLOT(activatePreviousCatalog()), QKeySequence(tr("SHIFT+c")), IMAGE|CATALOG },
 
     { tr("Ma&ximize"),           this, SLOT(maximize()),          QKeySequence(tr("x")), ANY },
     { tr("Normal Si&ze"),        this, SLOT(normalSize()),        QKeySequence(tr("z")), ANY },
@@ -71,6 +80,7 @@ MainWindow::MainWindow() {
     { tr("Toggle &Full screen"), this, SLOT(togglefullscreen()),  QKeySequence(tr("f")), ALWAYS },
     { tr("Cascade Windows"),  mdiArea, SLOT(cascadeSubWindows()), QKeySequence(), ANY2ORMORE },
     { tr("Tile Windows"),     mdiArea, SLOT(tileSubWindows()),    QKeySequence(), ANY2ORMORE },
+    { tr("View &Settings"),      this, SLOT(Settings()), QKeySequence(), ALWAYS },
   };
   populateMenu(tr("&View"), viewMenuItems);
 
@@ -254,10 +264,14 @@ void MainWindow::togglefullscreen() {
     showFullScreen(); // Show main window full screen
 }
 
-// QMdiArea::activatePreviousSubWindow() doesn't work as advertised
-// See bug report https://bugreports.qt.io/browse/QTBUG-22526
-void MainWindow::activatePreviousWindow() {
-  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
+static enum QMdiArea::WindowOrder WindowActivationOrder() {
+  const std::string activationOrder = TivUtility::loadSetting("WindowActivationOrder", "Creation");
+  return activationOrder[0] == 'S' ? QMdiArea::StackingOrder :
+         activationOrder[0] == 'A' ? QMdiArea::ActivationHistoryOrder :
+                                     QMdiArea::CreationOrder;
+}
+void MainWindow::activateWindow(Direction d) {
+  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList(WindowActivationOrder());
   QMdiSubWindow* activeSubWin;
   QList<QMdiSubWindow*>::const_iterator it;
   const auto cbegin = subwindows.cbegin(),
@@ -267,17 +281,31 @@ void MainWindow::activatePreviousWindow() {
       && (activeSubWin = mdiArea->activeSubWindow()) != nullptr
       && (it = std::find(cbegin, cend, activeSubWin)) != cend) {
 
-    if (it == cbegin) // Active window is first
-      it = cend; // So wrap around to end before decrementing iterator
-    mdiArea->setActiveSubWindow(*--it);
+    if (d == Direction::Next) {
+      if (++it == cend) // Active window was last
+	it = cbegin; // So wrap around to begin
+    } else  {
+      if (it == cbegin) // Active window was first
+	it = cend; // So wrap around to end before decrementing iterator
+      --it;
+    }
+    mdiArea->setActiveSubWindow(*it);
   }
+}
+void MainWindow::activateNextWindow() {
+  activateWindow(Direction::Next);
+}
+// QMdiArea::activatePreviousSubWindow() doesn't work as advertised
+// See bug report https://bugreports.qt.io/browse/QTBUG-22526
+void MainWindow::activatePreviousWindow() {
+  activateWindow(Direction::Previous);
 }
 
 static bool isCatalog(const QMdiSubWindow* it) {
   return dynamic_cast<ListView*>(it->widget()) != nullptr;
 }
 void MainWindow::activateNextCatalog() {
-  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
+  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList(WindowActivationOrder());
   QMdiSubWindow* activeSubWin;
   QList<QMdiSubWindow*>::const_iterator itActive, itCatalog;
   const auto cbegin = subwindows.cbegin(),
@@ -294,7 +322,7 @@ void MainWindow::activateNextCatalog() {
   }
 }
 void MainWindow::activatePreviousCatalog() {
-  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList();
+  const QList<QMdiSubWindow*> subwindows = mdiArea->subWindowList(WindowActivationOrder());
   QMdiSubWindow* activeSubWin;
   QList<QMdiSubWindow*>::const_reverse_iterator itActive, itCatalog;
   const auto crbegin = subwindows.crbegin(),
@@ -397,10 +425,43 @@ void MainWindow::trashFiles() {
   ListView* list;
   if ((image = activeView<ImageView*>()) != nullptr)
     image->trashFile();
-  else if ((slideshow = activeView<SlideshowView*>()) != nullptr)
-    slideshow->UserAction(SlideshowView::SlideshowAction::TRASH_FILE);
   else if ((list = activeView<ListView*>()) != nullptr)
     list->trashCatalogFiles();
+  else if ((slideshow = activeView<SlideshowView*>()) != nullptr)
+    slideshow->UserAction(SlideshowView::SlideshowAction::TRASH_FILE);
+}
+
+// Copy full image path to clipboard from image, catalog, or slideshow
+std::string MainWindow::getImagePath() {
+  ImageView* image;
+  ListView* list;
+  SlideshowView* slideshow;
+  if ((image = activeView<ImageView*>()) != nullptr)
+    return image->filename();
+  else if ((list = activeView<ListView*>()) != nullptr)
+    return list->filename();
+  else if ((slideshow = activeView<SlideshowView*>()) != nullptr)
+    return slideshow->filename();
+  else
+    return "";
+}
+// Copy image path to clipboard with slashes
+void MainWindow::copyImagePathSlash() {
+  QClipboard* clipboard = QApplication::clipboard();
+  std::string path = getImagePath();
+  if (clipboard != nullptr && !path.empty()) {
+    //std::replace(path.begin(), path.end(), '\\', '/');
+    clipboard->setText(path.c_str());
+  }
+}
+// Copy image path to clipboard replacing slashes with backslashes
+void MainWindow::copyImagePathBackslash() {
+  QClipboard* clipboard = QApplication::clipboard();
+  std::string path = getImagePath();
+  if (clipboard != nullptr && !path.empty()) {
+    std::replace(path.begin(), path.end(), '/', '\\');
+    clipboard->setText(path.c_str());
+  }
 }
 
 void MainWindow::slotListViewCurrentChanged(const std::string& catalogFilename, const std::string& filename) {
@@ -477,4 +538,9 @@ void MainWindow::slideshowLast() {
   SlideshowView* slideshow = activeView<SlideshowView*>();
   if (slideshow)
     slideshow->UserAction(SlideshowView::SlideshowAction::LAST);
+}
+
+void MainWindow::Settings() {
+  SettingsDialog dlg(this);
+  dlg.exec();
 }

@@ -30,7 +30,7 @@ class ListView : public QListView {
   //void setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags flags);
   std::vector<QModelIndex> getSelections();
 
-  std::string filename(int row);
+  std::string filename(int row = -1) const;
 
  signals:
   void signalCurrentChanged(const std::string& catalogFilename, const std::string& filename);

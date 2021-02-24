@@ -32,9 +32,11 @@ private slots:
   void deleteCatalogFiles();
   void slideshowCatalog();
 
+  void activateNextWindow();
   void activatePreviousWindow();
   void activatePreviousCatalog();
   void activateNextCatalog();
+  void Settings();
 
   void slotslideshowkeyPress(void* slideshowId, SlideshowView::SlideshowAction result);
   void slotListViewCurrentChanged(const std::string& catalogFilename, const std::string& filename);
@@ -51,7 +53,15 @@ private slots:
   void slideshowFirst();
   void slideshowLast();
 
+  void copyImagePathSlash();
+  void copyImagePathBackslash();
+
 private:
+  std::string getImagePath();
+
+  enum class Direction { Next, Previous };
+  void activateWindow(Direction n);
+
   template<typename T>
     T activeView();
   void CallListViewFunction(void (ListView::*listviewFunction)());

@@ -15,6 +15,7 @@ class SlideshowView : public QGraphicsView {
 
   void newSlide(int r, const std::string& fn);
   int getRow() const { return row; }
+  const std::string& filename() const { return sFilename; }
 
   void setId(void* id) { listviewSubwindowId = id; }
 

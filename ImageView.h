@@ -8,6 +8,7 @@ class ImageView : public QGraphicsView {
 
  public:
   ImageView(QGraphicsScene* scene, QImage& im, const std::string& fn);
+  //~ImageView();
   static ImageView* open();
   static ImageView* openFile(const QString& filename);
 

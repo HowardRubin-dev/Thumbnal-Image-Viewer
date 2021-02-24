@@ -13,6 +13,8 @@ ImageView::ImageView(QGraphicsScene* scene, QImage& im, const std::string& fn)
 {
 }
 
+//ImageView::~ImageView() { printf("Exiting ImageView\n"); }
+
 ImageView* ImageView::open() {
   QString filename =  QFileDialog::getOpenFileName(nullptr, "Open Image",
 						   (TivUtility::HomeDir() + "Pictures/").c_str(),

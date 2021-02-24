@@ -37,6 +37,23 @@ std::vector<QModelIndex> ListView::getSelections() {
   return rv;
 }
 
+std::string ListView::filename(int row /* = -1 */) const {
+  if (row >= 0)
+    return m_catalog ? m_catalog->filename(row) : "";
+  
+  QModelIndex ixCur;
+  QStandardItem* item;
+  CatalogItem* catitem;
+  if (m_catalog
+      && (ixCur = currentIndex()).isValid()
+      && (item = m_catalog->itemFromIndex(ixCur)) != nullptr
+      && (catitem = dynamic_cast<CatalogItem*>(item)) != nullptr) {
+    return catitem->ImagePath();
+  } else {
+    return "";
+  }
+}
+
 void ListView::OpenCurrentImage() {
   QStandardItem* item;
   CatalogItem* catitem;
@@ -201,10 +218,6 @@ void ListView::CallCatalogFunction(int (Catalog::*catalogFunction)(const std::ve
 void ListView::moveCatalogFiles() { CallCatalogFunction(&Catalog::moveFiles); }
 void ListView::trashCatalogFiles() { CallCatalogFunction(&Catalog::trashFiles); }
 void ListView::deleteCatalogFiles() { CallCatalogFunction(&Catalog::deleteFiles); }
-
-std::string ListView::filename(int row) {
-  return m_catalog ? m_catalog->filename(row) : "";
-}
 
 SlideshowView* ListView::slideshowCatalog() {
   if (m_catalog) {
